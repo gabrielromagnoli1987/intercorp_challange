@@ -7,6 +7,7 @@ import com.example.intercorp.models.Client;
 import com.example.intercorp.repositories.ClientRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,6 +21,9 @@ import java.util.stream.Collectors;
 public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
+
+    @Value("${averageAgeOfDeath}")
+    private int averageAgeOfDeath;
 
     @Autowired
     public ClientServiceImpl(ClientRepository clientRepository) {
@@ -69,7 +73,7 @@ public class ClientServiceImpl implements ClientService {
     }
 
     private LocalDate calculateEstimatedDateOfDeath(Client client) {
-        Period averageAgeOfDeath = Period.of(90, 0, 0);
+        Period averageAgeOfDeath = Period.of(this.averageAgeOfDeath, 0, 0);
         return client.getBirthDate().plus(averageAgeOfDeath);
     }
 
