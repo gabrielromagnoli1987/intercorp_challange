@@ -14,8 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.DoubleSummaryStatistics;
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Service
 public class ClientServiceImpl implements ClientService {
@@ -51,25 +50,24 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     public Mono<KpiClientsDto> getKpiClients() {
-        Flux<Client> clients = clientRepository.findAll();
-
-        return calculateSummaryStatistics(clients).flatMap(doubleSummaryStatistics ->
-                calculateStandardDeviation(clients, doubleSummaryStatistics.getAverage(), doubleSummaryStatistics.getCount()).map(
-                    standardDeviation -> new KpiClientsDto(doubleSummaryStatistics.getAverage(), standardDeviation)
-                )
+        return clientRepository.findAll().collectList().flatMap(
+                ClientServiceImpl::calculateStandardDeviationAndAverageAge
         );
     }
 
-    private static Mono<DoubleSummaryStatistics> calculateSummaryStatistics(Flux<Client> clients) {
-        return clients.collect(Collectors.summarizingDouble(client -> client.getAge().getYears()));
-    }
-
-    private Mono<Double> calculateStandardDeviation(Flux<Client> clients, Double averageAge, long count) {
-        return clients.collect(
-                Collectors.summingDouble(client -> Math.pow(client.getAge().getYears() - averageAge, 2))
-        ).map(
-                sum -> Math.sqrt(sum / count)
-        );
+    private static Mono<KpiClientsDto> calculateStandardDeviationAndAverageAge(List<Client> clients) {
+        double sum = 0.0;
+        int length = clients.size();
+        for(Client client : clients) {
+            sum += client.getAge().getYears();
+        }
+        double averageAge = sum / length;
+        double standardDeviation = 0.0;
+        for(Client client : clients) {
+            standardDeviation += Math.pow(client.getAge().getYears() - averageAge, 2);
+        }
+        standardDeviation = Math.sqrt(standardDeviation / length);
+        return Mono.just(new KpiClientsDto(averageAge, standardDeviation));
     }
 
     private LocalDate calculateEstimatedDateOfDeath(Client client) {
